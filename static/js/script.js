@@ -1,35 +1,62 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
   const container = document.querySelector(".container");
-  const button = document.querySelector(".button");
-  const input = document.querySelector("input");
+  const input = document.querySelector("#name");
+  const cryAudio = document.getElementById("cry-audio");
+  const laughAudio = document.getElementById("laugh-audio");
 
-  const animateStart = () => {
-    container.classList.add("told-richard");
-  }
+  // Stop all audio playback
+  const stopAllAudio = () => {
+    cryAudio.pause();
+    cryAudio.currentTime = 0;
+    laughAudio.pause();
+    laughAudio.currentTime = 0;
+  };
 
-  const inputChangeHandler = (event) => {
-    console.log(event.target.value);
+  // Function to handle sentiment response and animations
+  const handleResponse = (sentiment) => {
+    // Remove all previous animation classes
+    container.classList.remove("eyebrow-raise", "animating-tear", "animating-smile", "told-richard");
 
-    if (event.target.value.includes("Your hair ")) {
-      container.classList.add("eyebrow-raise");
-    } else {
-      container.classList.remove("eyebrow-raise");
+    stopAllAudio(); // Stop audio before applying new logic
+
+    if (sentiment === "Neutral") {
+      container.classList.add("eyebrow-raise"); // Neutral state: Eyebrow raise
+    } else if (sentiment === "Negative") {
+      container.classList.add("animating-tear"); // Negative state: Crying
+      cryAudio.play(); // Play crying audio (loop enabled)
+    } else if (sentiment === "Positive") {
+      container.classList.add("animating-smile", "told-richard"); // Positive state: Smiling with thumbs-up
+      laughAudio.play(); // Play laugh audio once
+    }
+  };
+
+  // Event listener for input changes
+  input.addEventListener("input", async () => {
+    const text = input.value.trim();
+    if (!text) {
+      // Reset all states if the input is empty
+      container.classList.remove("eyebrow-raise", "animating-tear", "animating-smile", "told-richard");
+      stopAllAudio();
+      return;
     }
 
-    if (event.target.value === "Your hair looks kind of funny") {
-      container.classList.add("animating-tear");
-    } else if (container.classList.value.includes("animating-tear")) {
-      container.classList.remove("animating-tear");
-    }
+    try {
+      const response = await fetch("/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
 
-    if (event.target.value === "Your hair looks fantastic") {
-      container.classList.add("animating-smile");
-    } else if (container.classList.value.includes("animating-smile")) {
-      container.classList.remove("animating-smile");
+      if (response.ok) {
+        const data = await response.json();
+        handleResponse(data.sentiment); // Pass sentiment to the handler
+      } else {
+        console.error("Error analyzing sentiment:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error sending request:", error);
     }
-  }
-
-  button.addEventListener("click", animateStart);
-  input.addEventListener("input", (event) => inputChangeHandler(event));
+  });
 });
-
